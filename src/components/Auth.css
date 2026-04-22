@@ -104,20 +104,17 @@ h2 {
   text-decoration: underline;
 }
 
-.admin-divider {
-  margin-top: 12px;
-  text-align: center;
-  border-top: 1px solid #e0e0e0;
-  padding-top: 12px;
+.password-input {
+  position: relative;
 }
 
-.admin-btn {
-  width: auto;
-  padding: 8px 20px;
-  font-size: 13px;
-  background-color: #2c3e50;
-}
-
-.admin-btn:hover {
-  background-color: #1a252f;
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 38%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
 }
