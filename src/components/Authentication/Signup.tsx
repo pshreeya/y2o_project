@@ -11,12 +11,14 @@ interface SignupProps {
   setView: (view: "login" | "signup" | "forgot") => void;
   showPassword: boolean;
   handleToggle: () => void;
+  onLoginSuccess: () => void;
 }
 
 export default function Signup({
   setView,
   showPassword,
   handleToggle,
+  onLoginSuccess,
 }: SignupProps) {
   const [signupData, setSignupData] = useState<SignupForm>({
     email: "",
@@ -35,12 +37,13 @@ export default function Signup({
   const handleSignup = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     console.log("Signup payload:", signupData);
-    //TODO:connect to backend
+    //TODO: do the api call to create the user account here
     setSignupData({
       email: "",
       password: "",
     });
-    setView("login");
+    //if successful: call the onLoginSuccess callback to switch to the onboarding flow
+    onLoginSuccess();
   };
 
   return (
@@ -49,16 +52,6 @@ export default function Signup({
         <img src="/images/Y2OFC.png" alt="Y2O Logo" className="logo" />
         <h2>Sign Up</h2>
         <p className="subtitle">Join Y2O now!</p>
-
-        {/* <input
-            type="text"
-            placeholder="Full Name"
-            value={signupData.full_name}
-            onChange={(e) =>
-              setSignupData({ ...signupData, full_name: e.target.value })
-            }
-            required
-            /> */}
         <input
           name="email"
           type="email"
@@ -69,26 +62,6 @@ export default function Signup({
           onChange={handleChange}
           required
         />
-        {/*<input
-            type="tel"
-            placeholder="Phone Number (ex: 123-456-7890)"
-            pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}"
-            title="Please enter in 123-456-7890 format"
-            value={signupData.phone}
-            onChange={(e) =>
-              setSignupData({ ...signupData, phone: e.target.value })
-            }
-            required
-          />
-          <input
-            type="text"
-            placeholder="Username"
-            value={signupData.username}
-            onChange={(e) =>
-              setSignupData({ ...signupData, username: e.target.value })
-            }
-            required
-          />*/}
         <div className="password-input">
           <input
             name="password"
