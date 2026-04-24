@@ -26,7 +26,7 @@ export default function Signup({
   });
 
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string>("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -43,26 +43,39 @@ export default function Signup({
     setErrorMessage(""); //clear any previous error messages
     setIsLoading(true); //show loading state
 
+    const timestamp = new Date().toISOString();
+
+    const payload = {
+      ...signupData,
+      created_at: timestamp,
+    };
+
     try {
       const response = await fetch("http://localhost:5000/api/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(signupData),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
         // Throw an error so the catch block can handle it
-        throw new Error(data.message || "Something went wrong during signup.");
+        setErrorMessage(
+          "An unexpected error occured during signup. Try again.",
+        );
       }
-      setSignupData({ email: "", password: "" });
+      //clearing up the form fields
+      setSignupData({
+        email: "",
+        password: "",
+      });
       //if successful: call the onLoginSuccess callback to switch to the onboarding flow
       onLoginSuccess(true, data.user.id);
     } catch (error: any) {
-      setErrorMessage(error.message || "An unexpected error occurred.");
+      setErrorMessage("User already exists. Try logging in.");
     } finally {
       setIsLoading(false); //hide loading state
     }
@@ -107,6 +120,12 @@ export default function Signup({
             )}
           </button>
         </div>
+
+        {errorMessage && (
+          <p className="error-text" style={{ color: "red" }}>
+            {errorMessage}
+          </p>
+        )}
 
         <button
           type="submit"

@@ -2,10 +2,10 @@ import { useState } from "react";
 import "./Onboarding.css";
 
 interface OrganizationPage {
-  organization_name: string;
-  organization_type: string;
-  organization_size: string;
-  role: string;
+  org_name: string;
+  org_type: string;
+  org_size: string;
+  org_role: string;
   primary_goal: string;
 }
 
@@ -28,10 +28,10 @@ export default function OrganizationPage({
   const [errorMessage, setErrorMessage] = useState("");
 
   const [orgData, setOrgData] = useState<OrganizationPage>({
-    organization_name: "",
-    organization_type: "",
-    organization_size: "",
-    role: "",
+    org_name: "",
+    org_type: "",
+    org_size: "",
+    org_role: "",
     primary_goal: "",
   });
 
@@ -88,8 +88,8 @@ export default function OrganizationPage({
           <input
             type="text"
             id="organization_name"
-            name="organization_name"
-            value={orgData.organization_name}
+            name="org_name"
+            value={orgData.org_name}
             onChange={handleChange}
             required
           />
@@ -99,8 +99,8 @@ export default function OrganizationPage({
           <input
             type="text"
             id="organization_type"
-            name="organization_type"
-            value={orgData.organization_type}
+            name="org_type"
+            value={orgData.org_type}
             onChange={handleChange}
             required
           />
@@ -110,8 +110,8 @@ export default function OrganizationPage({
           <input
             type="text"
             id="organization_size"
-            name="organization_size"
-            value={orgData.organization_size}
+            name="org_size"
+            value={orgData.org_size}
             onChange={handleChange}
             required
           />
@@ -121,8 +121,8 @@ export default function OrganizationPage({
           <input
             type="text"
             id="role"
-            name="role"
-            value={orgData.role}
+            name="org_role"
+            value={orgData.org_role}
             onChange={handleChange}
             required
           />

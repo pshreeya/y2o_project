@@ -19,7 +19,7 @@ const cors = require("cors");
 app.use(cors());
 
 app.post("/api/signup", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, created_at } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
@@ -37,8 +37,8 @@ app.post("/api/signup", async (req, res) => {
     }
     //inserts new user
     const insertResult = await db.query(
-      "INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING *",
-      [email, hashedPassword],
+      "INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, $3) RETURNING *",
+      [email, hashedPassword, created_at],
     );
     //sends newly created user to react
     res
@@ -154,7 +154,7 @@ app.post("/api/parentpage", async (req, res) => {
   try {
     //update the existing user row with the new data
     const result = await db.query(
-      `INSERT INTO student_profiles 
+      `INSERT INTO parent_profiles 
         (user_id, teen_email, primary_focus) 
        VALUES 
         ($1, $2, $3) 
@@ -184,7 +184,7 @@ app.post("/api/orgpage", async (req, res) => {
   try {
     //update the existing user row with the new data
     const result = await db.query(
-      `INSERT INTO student_profiles 
+      `INSERT INTO organization_profiles 
         (user_id, org_name, org_type, org_size, org_role, primary_goal) 
        VALUES 
         ($1, $2, $3, $4, $5, $6) 

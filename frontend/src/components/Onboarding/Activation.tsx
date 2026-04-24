@@ -20,7 +20,7 @@ export default function Activation({ setView, userData }: ActivationPageProps) {
   const Avatar = ({
     userData,
     size = 50,
-    bgColor = "#007bff",
+    bgColor = "#8b2323",
   }: {
     userData: any;
     size?: number;
@@ -32,9 +32,25 @@ export default function Activation({ setView, userData }: ActivationPageProps) {
     return (
       <div
         className="avatar"
-        style={{ width: size, height: size, backgroundColor: bgColor }}
+        style={{
+          width: size,
+          height: size,
+          backgroundColor: bgColor,
+          borderRadius: "50%",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+        }}
       >
-        {initials}
+        <span
+          style={{
+            color: "#f4f5f7",
+            fontSize: size * 0.4,
+            fontWeight: "bold",
+          }}
+        >
+          {initials}
+        </span>
       </div>
     );
   };
@@ -53,7 +69,7 @@ export default function Activation({ setView, userData }: ActivationPageProps) {
           created.
         </p>
         <div className="avatar-container">
-          <Avatar userData={userData} bgColor="#007bff" />
+          <Avatar userData={userData} bgColor="#8b2323" />
         </div>
 
         <div className="next-steps">
