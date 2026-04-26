@@ -3,20 +3,56 @@ const db = require("./db");
 const app = express();
 
 const bcrypt = require("bcrypt");
-const saltRounds = 12; //for security purposes, we use a higher number of salt rounds
-
-app.get("/", (req, res) => {
-  res.send("Hello from Express!");
-});
-
-app.listen(5000, () => {
-  console.log("Express server running on port 5000");
-});
-
-app.use(express.json());
+const saltRounds = 12;
 
 const cors = require("cors");
+const session = require("express-session");
+const passport = require("passport");
+const GoogleStrategy = require("passport-google-oauth20").Strategy;
+
 app.use(cors());
+app.use(express.json());
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret",
+  resave: false,
+  saveUninitialized: false,
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.use(new GoogleStrategy({
+  clientID: process.env.GOOGLE_CLIENT_ID.trim(),
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+  callbackURL: "http://localhost:5000/auth/google/callback",
+}, async (accessToken, refreshToken, profile, done) => {
+  const email = profile.emails[0].value;
+  try {
+    const existing = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (existing.rows.length > 0) {
+      return done(null, { user: existing.rows[0], isNewUser: false });
+    }
+    const result = await db.query(
+      "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
+      [email, new Date().toISOString()]
+    );
+    return done(null, { user: result.rows[0], isNewUser: true });
+  } catch (err) {
+    return done(err);
+  }
+}));
+
+passport.serializeUser((data, done) => done(null, data));
+passport.deserializeUser((data, done) => done(null, data));
+
+app.get("/auth/google", passport.authenticate("google", { scope: ["email", "profile"] }));
+
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: "http://localhost:5173" }),
+  (req, res) => {
+    const { user, isNewUser } = req.user;
+    res.redirect(`http://localhost:5173?userId=${user.id}&isNewUser=${isNewUser}`);
+  }
+);
 
 app.post("/api/signup", async (req, res) => {
   const { email, password, created_at } = req.body;
@@ -200,4 +236,8 @@ app.post("/api/orgpage", async (req, res) => {
     console.error("Error creating user profile:", error);
     res.status(500).json({ message: "Internal server error" });
   }
+});
+
+app.listen(5000, () => {
+  console.log("Express server running on port 5000");
 });

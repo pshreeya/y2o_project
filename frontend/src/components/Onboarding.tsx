@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Auth from "./Auth.tsx";
 import Page1 from "./Onboarding/Page1.tsx";
 import OrganizationPage from "./Onboarding/OrganizationPage.tsx";
@@ -20,6 +20,18 @@ const Onboarding: React.FC = () => {
     phone_number: "",
     who_are_you: "",
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const userId = params.get("userId");
+    const isNew = params.get("isNewUser");
+    if (userId) {
+      setIsAuthenticated(true);
+      setIsNewUser(isNew === "true");
+      setUserData((prev) => ({ ...prev, id: userId }));
+      window.history.replaceState({}, "", "/");
+    }
+  }, []);
 
   return (
     <div>
