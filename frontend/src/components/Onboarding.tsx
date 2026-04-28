@@ -5,6 +5,7 @@ import OrganizationPage from "./Onboarding/OrganizationPage.tsx";
 import StudentPage from "./Onboarding/StudentPage.tsx";
 import ParentPage from "./Onboarding/ParentPage.tsx";
 import Activation from "./Onboarding/Activation.tsx";
+import Dashboard from "./Dashboard.tsx";
 
 type View = "page1" | "page2" | "page3";
 
@@ -37,18 +38,19 @@ const Onboarding: React.FC = () => {
     <div>
       {!isAuthenticated ? (
         <Auth
-          onLoginSuccess={(isNew, userId) => {
+          onLoginSuccess={(isNew, loggedInUser) => {
             setIsAuthenticated(true);
-            setIsNewUser(isNew); //stores whether they signed up or logged in
-            setUserData((prev) => ({ ...prev, id: userId }));
+            setIsNewUser(isNew);
+            setUserData((prev) => ({
+              ...prev,
+              ...loggedInUser,
+              phone_number: loggedInUser.phone_number || "",
+            }));
           }}
         />
       ) : !isNewUser ? (
         //if not new user, skip onboarding entirely
-        <div style={{ textAlign: "center", padding: "50px" }}>
-          <h2>Welcome to the Dashboard!</h2>
-          <p>You have successfully logged in.</p>
-        </div>
+        <Dashboard userData={userData} />
       ) : (
         //if they are a new user, show onboarding
         <>

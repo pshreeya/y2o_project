@@ -12,55 +12,78 @@ const GoogleStrategy = require("passport-google-oauth20").Strategy;
 
 app.use(cors());
 app.use(express.json());
-app.use(session({
-  secret: process.env.SESSION_SECRET || "dev-secret",
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "dev-secret",
+    resave: false,
+    saveUninitialized: false,
+  }),
+);
 app.use(passport.initialize());
 app.use(passport.session());
 
-const googleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+const googleConfigured = !!(
+  process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+);
 
 if (googleConfigured) {
-  passport.use(new GoogleStrategy({
-    clientID: process.env.GOOGLE_CLIENT_ID.trim(),
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
-    callbackURL: "http://localhost:5000/auth/google/callback",
-  }, async (accessToken, refreshToken, profile, done) => {
-    const email = profile.emails[0].value;
-    try {
-      const existing = await db.query("SELECT * FROM users WHERE email = $1", [email]);
-      if (existing.rows.length > 0) {
-        return done(null, { user: existing.rows[0], isNewUser: false });
-      }
-      const result = await db.query(
-        "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
-        [email, new Date().toISOString()]
-      );
-      return done(null, { user: result.rows[0], isNewUser: true });
-    } catch (err) {
-      return done(err);
-    }
-  }));
+  passport.use(
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID.trim(),
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+        callbackURL: "http://localhost:5000/auth/google/callback",
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        const email = profile.emails[0].value;
+        try {
+          const existing = await db.query(
+            "SELECT * FROM users WHERE email = $1",
+            [email],
+          );
+          if (existing.rows.length > 0) {
+            return done(null, { user: existing.rows[0], isNewUser: false });
+          }
+          const result = await db.query(
+            "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
+            [email, new Date().toISOString()],
+          );
+          return done(null, { user: result.rows[0], isNewUser: true });
+        } catch (err) {
+          return done(err);
+        }
+      },
+    ),
+  );
 
   passport.serializeUser((data, done) => done(null, data));
   passport.deserializeUser((data, done) => done(null, data));
 
-  app.get("/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: "http://localhost:5173" }),
+  app.get(
+    "/auth/google/callback",
+    passport.authenticate("google", {
+      failureRedirect: "http://localhost:5173",
+    }),
     (req, res) => {
       const { user, isNewUser } = req.user;
-      res.redirect(`http://localhost:5173?userId=${user.id}&isNewUser=${isNewUser}`);
-    }
+      res.redirect(
+        `http://localhost:5173?userId=${user.id}&isNewUser=${isNewUser}`,
+      );
+    },
   );
 }
 
 app.get("/auth/google", (req, res, next) => {
   if (!googleConfigured) {
-    return res.status(503).json({ message: "Google sign-in is not configured on this server." });
+    return res
+      .status(503)
+      .json({ message: "Google sign-in is not configured on this server." });
   }
-  passport.authenticate("google", { scope: ["email", "profile"] })(req, res, next);
+  passport.authenticate("google", { scope: ["email", "profile"] })(
+    req,
+    res,
+    next,
+  );
 });
 
 app.post("/api/signup", async (req, res) => {
@@ -115,6 +138,15 @@ app.post("/api/login", async (req, res) => {
     res.status(200).json({ message: "Login successful", user });
   } catch (error) {
     console.error("Error during login:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+app.post("/api/logout", (req, res) => {
+  try {
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Error during logout:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

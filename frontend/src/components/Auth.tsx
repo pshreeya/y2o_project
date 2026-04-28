@@ -5,8 +5,16 @@ import ForgotPassword from "./Authentication/ForgotPassword.tsx";
 
 type View = "login" | "signup" | "forgot";
 
+export interface UserData {
+  id: string;
+  first_name: string;
+  last_name: string;
+  phone_number?: string;
+  who_are_you: string;
+}
+
 interface AuthProps {
-  onLoginSuccess: (isNewUser: boolean, userId: string) => void;
+  onLoginSuccess: (isNew: boolean, user: UserData) => void;
 }
 
 export default function Auth({ onLoginSuccess }: AuthProps) {
