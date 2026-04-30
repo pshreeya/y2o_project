@@ -8,7 +8,7 @@ interface LoginForm {
 }
 
 interface LoginProps {
-  setView: (view: "login" | "signup" | "forgot") => void;
+  setView: (view: "login" | "signup" | "forgot" | "phone") => void;
   showPassword: boolean;
   handleToggle: () => void;
   onLoginSuccess: (isNewUser: boolean, userId: string) => void;
@@ -120,8 +120,12 @@ export default function Login({
           </a>
         </div>
 
-        <button type="submit" className="btn">
-          Login
+        {errorMessage && (
+          <p style={{ color: "red", fontSize: "0.85rem", marginBottom: "1rem" }}>{errorMessage}</p>
+        )}
+
+        <button type="submit" className="btn" disabled={isLoading}>
+          {isLoading ? "Logging in..." : "Login"}
         </button>
 
         <div className="divider"><span>or</span></div>

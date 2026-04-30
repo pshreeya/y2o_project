@@ -8,7 +8,7 @@ interface SignupForm {
 }
 
 interface SignupProps {
-  setView: (view: "login" | "signup" | "forgot") => void;
+  setView: (view: "login" | "signup" | "forgot" | "phone") => void;
   showPassword: boolean;
   handleToggle: () => void;
   onLoginSuccess: (isNewUser: boolean, userId: string) => void;

@@ -9,6 +9,11 @@ const cors = require("cors");
 const session = require("express-session");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+const stytch = require("stytch");
+
+const stytchClient = (process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET)
+  ? new stytch.Client({ project_id: process.env.STYTCH_PROJECT_ID, secret: process.env.STYTCH_SECRET })
+  : null;
 
 app.use(cors());
 app.use(express.json());
@@ -244,6 +249,57 @@ app.post("/api/orgpage", async (req, res) => {
   } catch (error) {
     console.error("Error creating user profile:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Send OTP to phone number
+app.post("/api/send-otp", async (req, res) => {
+  if (!stytchClient) {
+    return res.status(503).json({ error: "Phone login is not configured on this server." });
+  }
+  let { phone_number } = req.body;
+  if (!phone_number) {
+    return res.status(400).json({ error: "Phone number is required." });
+  }
+  if (!phone_number.startsWith("+")) {
+    phone_number = "+1" + phone_number.replace(/\D/g, "");
+  }
+  try {
+    const response = await stytchClient.otps.sms.loginOrCreate({ phone_number });
+    return res.json({ method_id: response.phone_id, user_created: response.user_created });
+  } catch (err) {
+    console.error("Stytch send OTP error:", err);
+    return res.status(500).json({ error: "Failed to send code. Check the phone number and try again." });
+  }
+});
+
+// Verify OTP code
+app.post("/api/verify-otp", async (req, res) => {
+  if (!stytchClient) {
+    return res.status(503).json({ error: "Phone login is not configured on this server." });
+  }
+  const { method_id, code } = req.body;
+  if (!method_id || !code) {
+    return res.status(400).json({ error: "Method ID and code are required." });
+  }
+  try {
+    const response = await stytchClient.otps.sms.authenticate({
+      method_id,
+      code,
+      session_duration_minutes: 60,
+    });
+    return res.json({
+      session_token: response.session_token,
+      session_jwt:   response.session_jwt,
+      user_id:       response.user_id,
+    });
+  } catch (err) {
+    console.error("Stytch verify OTP error:", err);
+    const errType = err.error_type || "";
+    if (errType === "otp_code_not_found" || errType === "unable_to_auth_otp") {
+      return res.status(401).json({ error: "Invalid or expired code." });
+    }
+    return res.status(500).json({ error: "Verification failed. Please try again." });
   }
 });
 
