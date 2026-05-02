@@ -274,4 +274,8 @@ app.post("/api/orgpage", async (req, res) => {
   }
 });
 
+app.get("/", (req, res) => {
+  res.send("Y2O API is running!");
+});
+
 module.exports = app;
