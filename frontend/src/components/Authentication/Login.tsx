@@ -33,6 +33,8 @@ export default function Login({
     password: "",
   });
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -45,7 +47,7 @@ export default function Login({
 
     try {
       // Make API call to login endpoint
-      const response = await fetch("http://localhost:5000/api/login", {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

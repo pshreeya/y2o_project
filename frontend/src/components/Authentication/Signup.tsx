@@ -33,6 +33,8 @@ export default function Signup({
     password: "",
   });
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -59,7 +61,7 @@ export default function Signup({
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/signup", {
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
