@@ -40,7 +40,7 @@ export default function OrganizationPage({
     setOrgData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleOrgSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleOrgSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
     setIsLoading(true);
@@ -51,7 +51,7 @@ export default function OrganizationPage({
         ...orgData,
       };
 
-      const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+      const API_URL = import.meta.env.VITE_API_URL || "";
 
       const response = await fetch(`${API_URL}/api/orgpage`, {
         method: "POST",

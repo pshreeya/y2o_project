@@ -32,7 +32,7 @@ export default function Page1({ setView, userData, setUserData }: Page1Props) {
     }));
   };
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "";
 
   //handler
   const handlePage1Submit = async (e: React.FormEvent<HTMLFormElement>) => {

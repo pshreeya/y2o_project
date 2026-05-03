@@ -33,13 +33,13 @@ export default function Login({
     password: "",
   });
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const API_URL = import.meta.env.VITE_API_URL || "";
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   //handlers
-  const handleLogin = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setErrorMessage(""); //clear any previous error messages
@@ -138,7 +138,7 @@ export default function Login({
           <span>or</span>
         </div>
 
-        <a href="http://localhost:5000/auth/google" className="btn-google">
+        <a href={`${API_URL}/api/auth/google`} className="btn-google">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path
               fill="#4285F4"

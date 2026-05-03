@@ -10,7 +10,7 @@ export default function ForgotPassword({ setView }: ForgotPasswordProps) {
   const [resetEmail, setResetEmail] = useState("");
 
   //handler
-  const handleForgot = (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleForgot = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setResetLoading(true);
     console.log("Reset email:", resetEmail);

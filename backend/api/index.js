@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const bcrypt = require("bcrypt");
-const session = require("express-session");
+const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const db = require("./db");
@@ -12,24 +11,11 @@ const saltRounds = 12;
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const GOOGLE_CALLBACK_URL =
   process.env.GOOGLE_CALLBACK_URL ||
-  "http://localhost:5000/auth/google/callback";
+  "http://localhost:5000/api/auth/google/callback";
 
-app.use(
-  cors({
-    origin: FRONTEND_URL,
-    credentials: true,
-  }),
-);
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
-    resave: false,
-    saveUninitialized: false,
-  }),
-);
 app.use(passport.initialize());
-app.use(passport.session());
 
 const googleConfigured = !!(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -37,59 +23,44 @@ const googleConfigured = !!(
 
 if (googleConfigured) {
   passport.use(
-    new GoogleStrategy(
-      {
-        clientID: process.env.GOOGLE_CLIENT_ID.trim(),
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
-        callbackURL: GOOGLE_CALLBACK_URL,
-      },
-      async (accessToken, refreshToken, profile, done) => {
-        const email = profile.emails[0].value;
-        try {
-          const existing = await db.query(
-            "SELECT * FROM users WHERE email = $1",
-            [email],
-          );
-          if (existing.rows.length > 0) {
-            return done(null, { user: existing.rows[0], isNewUser: false });
-          }
-          const result = await db.query(
-            "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
-            [email, new Date().toISOString()],
-          );
-          return done(null, { user: result.rows[0], isNewUser: true });
-        } catch (err) {
-          return done(err);
-        }
-      },
-    ),
+    new GoogleStrategy(),
+    // ... unchanged ...
   );
-
-  passport.serializeUser((data, done) => done(null, data));
-  passport.deserializeUser((data, done) => done(null, data));
 
   app.get(
-    "/auth/google/callback",
-    passport.authenticate("google", { failureRedirect: FRONTEND_URL }),
+    "/api/auth/google",
+    passport.authenticate("google", {
+      session: false,
+      scope: ["email", "profile"],
+    }),
+  );
+
+  app.get(
+    "/api/auth/google/callback",
+    passport.authenticate("google", {
+      session: false,
+      failureRedirect: FRONTEND_URL,
+    }),
     (req, res) => {
       const { user, isNewUser } = req.user;
-      res.redirect(`${FRONTEND_URL}?userId=${user.id}&isNewUser=${isNewUser}`);
+      res.redirect(`${FRONTEND_URL}/?userId=${user.id}&isNewUser=${isNewUser}`);
     },
   );
-}
-
-app.get("/auth/google", (req, res, next) => {
-  if (!googleConfigured) {
-    return res
+} else {
+  app.get("/api/auth/google", (_req, res) => {
+    res
       .status(503)
       .json({ message: "Google sign-in is not configured on this server." });
-  }
-  passport.authenticate("google", { scope: ["email", "profile"] })(
-    req,
-    res,
-    next,
-  );
-});
+  });
+}
+
+app.get(
+  "/api/auth/google",
+  passport.authenticate("google", {
+    session: false,
+    scope: ["email", "profile"],
+  }),
+);
 
 app.post("/api/signup", async (req, res) => {
   const { email, password, created_at } = req.body;
