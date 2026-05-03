@@ -15,9 +15,11 @@ export default function Dashboard({ userData }: DashboardProps) {
   // We only need the active tab state for the sidebar now!
   const [activeTab, setActiveTab] = useState<"home" | "profile">("home");
 
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const handleLogout = async (): Promise<void> => {
     try {
-      const response = await fetch("/api/logout", {
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
