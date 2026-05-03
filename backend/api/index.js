@@ -23,8 +23,34 @@ const googleConfigured = !!(
 
 if (googleConfigured) {
   passport.use(
-    new GoogleStrategy(),
-    // ... unchanged ...
+    new GoogleStrategy(
+      {
+        clientID: process.env.GOOGLE_CLIENT_ID.trim(),
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
+        callbackURL: GOOGLE_CALLBACK_URL,
+        state: false,
+      },
+      async (accessToken, refreshToken, profile, done) => {
+        // ← THIS PART
+        try {
+          const email = profile.emails[0].value;
+          const existing = await db.query(
+            "SELECT * FROM users WHERE email = $1",
+            [email],
+          );
+          if (existing.rows.length > 0) {
+            return done(null, { user: existing.rows[0], isNewUser: false });
+          }
+          const result = await db.query(
+            "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
+            [email, new Date().toISOString()],
+          );
+          return done(null, { user: result.rows[0], isNewUser: true });
+        } catch (err) {
+          return done(err);
+        }
+      },
+    ),
   );
 
   app.get(
