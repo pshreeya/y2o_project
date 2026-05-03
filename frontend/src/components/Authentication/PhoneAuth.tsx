@@ -1,9 +1,18 @@
 import { useState } from "react";
 import "./Auth.css";
+import type { UserData } from "../Auth";
 
 interface PhoneAuthProps {
   setView: (view: "login" | "signup" | "forgot" | "phone") => void;
-  onLoginSuccess: (isNewUser: boolean, userId: string) => void;
+  onLoginSuccess: (isNewUser: boolean, user: UserData) => void;
+}
+
+function formatPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
 }
 
 export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
@@ -11,9 +20,9 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
 
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [normalizedPhone, setNormalizedPhone] = useState("");
   const [code, setCode] = useState("");
   const [methodId, setMethodId] = useState("");
-  const [userCreated, setUserCreated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -30,7 +39,7 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setMethodId(data.method_id);
-      setUserCreated(data.user_created);
+      setNormalizedPhone(data.phone_number);
       setStep("otp");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to send code.");
@@ -47,11 +56,11 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       const response = await fetch(`${API_URL}/api/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method_id: methodId, code }),
+        body: JSON.stringify({ method_id: methodId, code, phone_number: normalizedPhone }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      onLoginSuccess(userCreated, data.user_id);
+      onLoginSuccess(data.isNew, data.user);
     } catch (err: any) {
       setErrorMessage(err.message || "Verification failed.");
     } finally {
@@ -65,7 +74,14 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
         <form className="form" onSubmit={handleVerifyOtp}>
           <img src="/images/Y2OFC.png" alt="Y2O Logo" className="logo" />
           <h2>Enter Code</h2>
-          <p className="subtitle">We sent a 6-digit code to {phoneNumber}</p>
+          <p className="subtitle">We sent a 6-digit code to</p>
+
+          <input
+            type="tel"
+            value={formatPhone(normalizedPhone)}
+            readOnly
+            style={{ background: "#f3f4f6", color: "#6b7280", cursor: "not-allowed" }}
+          />
 
           <input
             type="text"

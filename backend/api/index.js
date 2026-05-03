@@ -1,13 +1,11 @@
 const express = require("express");
 const cors = require("cors");
-const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const stytch = require("stytch");
 const db = require("./db");
 
 const app = express();
-const saltRounds = 12;
 
 const stytchClient =
   process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET
@@ -94,51 +92,76 @@ app.post("/api/signup", async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
-  try {
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const checkUser = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+  if (!stytchClient) {
+    return res.status(503).json({ message: "Email signup is not configured." });
+  }
 
-    if (checkUser.rows.length > 0) {
+  try {
+    await stytchClient.passwords.create({ email, password });
+  } catch (err) {
+    if (err.error_type === "duplicate_email") {
       return res.status(400).json({ message: "User already exists" });
     }
+    console.error("Stytch signup error:", err);
+    return res
+      .status(500)
+      .json({ message: "Signup failed. Please try again." });
+  }
 
+  try {
+    const existing = await db.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: "User already exists" });
+    }
     const insertResult = await db.query(
-      "INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, $3) RETURNING *",
-      [email, hashedPassword, created_at],
+      "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
+      [email, created_at || new Date().toISOString()],
     );
-
-    res
+    return res
       .status(201)
       .json({ message: "Signup successful", user: insertResult.rows[0] });
   } catch (error) {
     console.error("Error during signup:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
+  if (!stytchClient) {
+    return res.status(503).json({ message: "Email login is not configured." });
+  }
+
+  try {
+    await stytchClient.passwords.authenticate({
+      email,
+      password,
+      session_duration_minutes: 60,
+    });
+  } catch (err) {
+    const status = err.status_code || 500;
+    if (status >= 400 && status < 500) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+    console.error("Stytch login error:", err);
+    return res.status(500).json({ message: "Login failed. Please try again." });
+  }
+
   try {
     const result = await db.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
     if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(404).json({ message: "User not found." });
     }
-
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    res.status(200).json({ message: "Login successful", user });
+    return res
+      .status(200)
+      .json({ message: "Login successful", user: result.rows[0] });
   } catch (error) {
     console.error("Error during login:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -285,16 +308,20 @@ app.post("/api/send-otp", async (req, res) => {
     phone_number = "+1" + phone_number.replace(/\D/g, "");
   }
   try {
-    const response = await stytchClient.otps.sms.loginOrCreate({ phone_number });
+    const response = await stytchClient.otps.sms.loginOrCreate({
+      phone_number,
+    });
     return res.json({
       method_id: response.phone_id,
-      user_created: response.user_created,
+      phone_number,
     });
   } catch (err) {
     console.error("Stytch send OTP error:", err);
     return res
       .status(500)
-      .json({ error: "Failed to send code. Check the phone number and try again." });
+      .json({
+        error: "Failed to send code. Check the phone number and try again.",
+      });
   }
 });
 
@@ -304,23 +331,24 @@ app.post("/api/verify-otp", async (req, res) => {
       .status(503)
       .json({ error: "Phone login is not configured on this server." });
   }
-  const { method_id, code } = req.body;
-  if (!method_id || !code) {
-    return res.status(400).json({ error: "Method ID and code are required." });
+  let { method_id, code, phone_number } = req.body;
+  if (!method_id || !code || !phone_number) {
+    return res
+      .status(400)
+      .json({ error: "Method ID, code, and phone number are required." });
   }
+  if (!phone_number.startsWith("+")) {
+    phone_number = "+1" + phone_number.replace(/\D/g, "");
+  }
+
   try {
-    const response = await stytchClient.otps.sms.authenticate({
+    await stytchClient.otps.authenticate({
       method_id,
       code,
       session_duration_minutes: 60,
     });
-    return res.json({
-      session_token: response.session_token,
-      session_jwt: response.session_jwt,
-      user_id: response.user_id,
-    });
   } catch (err) {
-    console.error("Stytch verify OTP error:", err);
+    console.error("Stytch OTP verify error:", err);
     const errType = err.error_type || "";
     if (errType === "otp_code_not_found" || errType === "unable_to_auth_otp") {
       return res.status(401).json({ error: "Invalid or expired code." });
@@ -328,6 +356,28 @@ app.post("/api/verify-otp", async (req, res) => {
     return res
       .status(500)
       .json({ error: "Verification failed. Please try again." });
+  }
+
+  try {
+    const existing = await db.query(
+      "SELECT * FROM users WHERE phone_number = $1",
+      [phone_number],
+    );
+    if (existing.rows.length > 0) {
+      return res.json({ user: existing.rows[0], isNew: false });
+    }
+    const inserted = await db.query(
+      "INSERT INTO users (phone_number, created_at) VALUES ($1, $2) RETURNING *",
+      [phone_number, new Date().toISOString()],
+    );
+    return res.json({ user: inserted.rows[0], isNew: true });
+  } catch (error) {
+    console.error("DB error after OTP verify:", error);
+    return res
+      .status(500)
+      .json({
+        error: "Code verified but failed to load account. Please try again.",
+      });
   }
 });
 
