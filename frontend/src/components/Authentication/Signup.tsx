@@ -73,10 +73,15 @@ export default function Signup({
 
       if (!response.ok) {
         // Throw an error so the catch block can handle it
-        setErrorMessage(
-          "An unexpected error occured during signup. Try again.",
-        );
+        setErrorMessage(data.message || "Something went wrong during signup.");
+        return;
       }
+
+      if (!data.user) {
+        setErrorMessage("Unexpected response from server.");
+        return;
+      }
+
       //clearing up the form fields
       setSignupData({
         email: "",
@@ -85,7 +90,9 @@ export default function Signup({
       //if successful: call the onLoginSuccess callback to switch to the onboarding flow
       onLoginSuccess(true, data.user);
     } catch (error: any) {
-      setErrorMessage("User already exists. Try logging in.");
+      setErrorMessage(
+        error.message || "An unexpected error occurred during signup.",
+      );
     } finally {
       setIsLoading(false); //hide loading state
     }
