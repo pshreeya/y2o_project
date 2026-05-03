@@ -19,7 +19,7 @@ export default function Dashboard({ userData }: DashboardProps) {
 
   const handleLogout = async (): Promise<void> => {
     try {
-      const response = await fetch(`${API_URL}/api/signup`, {
+      const response = await fetch(`${API_URL}/api/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
