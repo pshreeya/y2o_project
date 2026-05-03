@@ -31,7 +31,6 @@ if (googleConfigured) {
         state: false,
       },
       async (accessToken, refreshToken, profile, done) => {
-        // ← THIS PART
         try {
           const email = profile.emails[0].value;
           const existing = await db.query(
@@ -79,14 +78,6 @@ if (googleConfigured) {
       .json({ message: "Google sign-in is not configured on this server." });
   });
 }
-
-app.get(
-  "/api/auth/google",
-  passport.authenticate("google", {
-    session: false,
-    scope: ["email", "profile"],
-  }),
-);
 
 app.post("/api/signup", async (req, res) => {
   const { email, password, created_at } = req.body;
