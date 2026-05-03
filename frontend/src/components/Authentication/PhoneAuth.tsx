@@ -7,11 +7,20 @@ interface PhoneAuthProps {
   onLoginSuccess: (isNewUser: boolean, user: UserData) => void;
 }
 
+function formatPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
+}
+
 export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [normalizedPhone, setNormalizedPhone] = useState("");
   const [code, setCode] = useState("");
   const [methodId, setMethodId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -30,6 +39,7 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setMethodId(data.method_id);
+      setNormalizedPhone(data.phone_number);
       setStep("otp");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to send code.");
@@ -46,7 +56,7 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       const response = await fetch(`${API_URL}/api/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method_id: methodId, code }),
+        body: JSON.stringify({ method_id: methodId, code, phone_number: normalizedPhone }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
@@ -64,7 +74,14 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
         <form className="form" onSubmit={handleVerifyOtp}>
           <img src="/images/Y2OFC.png" alt="Y2O Logo" className="logo" />
           <h2>Enter Code</h2>
-          <p className="subtitle">We sent a 6-digit code to {phoneNumber}</p>
+          <p className="subtitle">We sent a 6-digit code to</p>
+
+          <input
+            type="tel"
+            value={formatPhone(normalizedPhone)}
+            readOnly
+            style={{ background: "#f3f4f6", color: "#6b7280", cursor: "not-allowed" }}
+          />
 
           <input
             type="text"
