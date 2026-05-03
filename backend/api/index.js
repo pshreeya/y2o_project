@@ -1,31 +1,29 @@
 const express = require("express");
-const db = require("./db");
-const app = express();
-
-const bcrypt = require("bcrypt");
-const saltRounds = 12;
-
 const cors = require("cors");
-const session = require("express-session");
+const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
+<<<<<<< HEAD:backend/server.js
 const stytch = require("stytch");
 
 const stytchClient = (process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET)
   ? new stytch.Client({ project_id: process.env.STYTCH_PROJECT_ID, secret: process.env.STYTCH_SECRET })
   : null;
+=======
+const db = require("./db");
+>>>>>>> 3dd00d828264f641b6a99ec1572f8e3379aa325a:backend/api/index.js
 
-app.use(cors());
+const app = express();
+const saltRounds = 12;
+
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const GOOGLE_CALLBACK_URL =
+  process.env.GOOGLE_CALLBACK_URL ||
+  "http://localhost:5000/api/auth/google/callback";
+
+app.use(cors({ origin: FRONTEND_URL, credentials: true }));
 app.use(express.json());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dev-secret",
-    resave: false,
-    saveUninitialized: false,
-  }),
-);
 app.use(passport.initialize());
-app.use(passport.session());
 
 const googleConfigured = !!(
   process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
@@ -37,11 +35,12 @@ if (googleConfigured) {
       {
         clientID: process.env.GOOGLE_CLIENT_ID.trim(),
         clientSecret: process.env.GOOGLE_CLIENT_SECRET.trim(),
-        callbackURL: "http://localhost:5000/auth/google/callback",
+        callbackURL: GOOGLE_CALLBACK_URL,
+        state: false,
       },
       async (accessToken, refreshToken, profile, done) => {
-        const email = profile.emails[0].value;
         try {
+          const email = profile.emails[0].value;
           const existing = await db.query(
             "SELECT * FROM users WHERE email = $1",
             [email],
@@ -61,35 +60,32 @@ if (googleConfigured) {
     ),
   );
 
-  passport.serializeUser((data, done) => done(null, data));
-  passport.deserializeUser((data, done) => done(null, data));
+  app.get(
+    "/api/auth/google",
+    passport.authenticate("google", {
+      session: false,
+      scope: ["email", "profile"],
+    }),
+  );
 
   app.get(
-    "/auth/google/callback",
+    "/api/auth/google/callback",
     passport.authenticate("google", {
-      failureRedirect: "http://localhost:5173",
+      session: false,
+      failureRedirect: FRONTEND_URL,
     }),
     (req, res) => {
       const { user, isNewUser } = req.user;
-      res.redirect(
-        `http://localhost:5173?userId=${user.id}&isNewUser=${isNewUser}`,
-      );
+      res.redirect(`${FRONTEND_URL}/?userId=${user.id}&isNewUser=${isNewUser}`);
     },
   );
-}
-
-app.get("/auth/google", (req, res, next) => {
-  if (!googleConfigured) {
-    return res
+} else {
+  app.get("/api/auth/google", (_req, res) => {
+    res
       .status(503)
       .json({ message: "Google sign-in is not configured on this server." });
-  }
-  passport.authenticate("google", { scope: ["email", "profile"] })(
-    req,
-    res,
-    next,
-  );
-});
+  });
+}
 
 app.post("/api/signup", async (req, res) => {
   const { email, password, created_at } = req.body;
@@ -98,9 +94,7 @@ app.post("/api/signup", async (req, res) => {
     return res.status(400).json({ message: "Email and password are required" });
   }
   try {
-    //hash the password using bcrypt
     const hashedPassword = await bcrypt.hash(password, saltRounds);
-    //checking is the user exists
     const checkUser = await db.query("SELECT * FROM users WHERE email = $1", [
       email,
     ]);
@@ -108,12 +102,12 @@ app.post("/api/signup", async (req, res) => {
     if (checkUser.rows.length > 0) {
       return res.status(400).json({ message: "User already exists" });
     }
-    //inserts new user
+
     const insertResult = await db.query(
       "INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, $3) RETURNING *",
       [email, hashedPassword, created_at],
     );
-    //sends newly created user to react
+
     res
       .status(201)
       .json({ message: "Signup successful", user: insertResult.rows[0] });
@@ -159,13 +153,11 @@ app.post("/api/logout", (req, res) => {
 app.post("/api/page1", async (req, res) => {
   const { id, first_name, last_name, phone_number, who_are_you } = req.body;
 
-  //ensure there's an ID to update
   if (!id) {
     return res.status(400).json({ message: "User ID is missing." });
   }
 
   try {
-    //update the existing user row with the new data
     const result = await db.query(
       `UPDATE users 
        SET first_name = $1, last_name = $2, phone_number = $3, role = $4 
@@ -199,13 +191,11 @@ app.post("/api/studentpage", async (req, res) => {
     primary_goal,
   } = req.body;
 
-  //ensure there's an ID to update
   if (!user_id) {
     return res.status(400).json({ message: "User ID is missing." });
   }
 
   try {
-    //update the existing user row with the new data
     const result = await db.query(
       `INSERT INTO student_profiles 
         (user_id, age, grade, school, school_board, top_interests, primary_goal) 
@@ -228,13 +218,11 @@ app.post("/api/studentpage", async (req, res) => {
 app.post("/api/parentpage", async (req, res) => {
   const { user_id, teen_email, primary_focus } = req.body;
 
-  //ensure there's an ID to update
   if (!user_id) {
     return res.status(400).json({ message: "User ID is missing." });
   }
 
   try {
-    //update the existing user row with the new data
     const result = await db.query(
       `INSERT INTO parent_profiles 
         (user_id, teen_email, primary_focus) 
@@ -258,13 +246,11 @@ app.post("/api/orgpage", async (req, res) => {
   const { user_id, org_name, org_type, org_size, org_role, primary_goal } =
     req.body;
 
-  //ensure there's an ID to update
   if (!user_id) {
     return res.status(400).json({ message: "User ID is missing." });
   }
 
   try {
-    //update the existing user row with the new data
     const result = await db.query(
       `INSERT INTO organization_profiles 
         (user_id, org_name, org_type, org_size, org_role, primary_goal) 
@@ -284,6 +270,7 @@ app.post("/api/orgpage", async (req, res) => {
   }
 });
 
+<<<<<<< HEAD:backend/server.js
 // Send OTP to phone number
 app.post("/api/send-otp", async (req, res) => {
   if (!stytchClient) {
@@ -337,4 +324,10 @@ app.post("/api/verify-otp", async (req, res) => {
 
 app.listen(5000, () => {
   console.log("Express server running on port 5000");
+=======
+app.get("/", (req, res) => {
+  res.send("Y2O API is running!");
+>>>>>>> 3dd00d828264f641b6a99ec1572f8e3379aa325a:backend/api/index.js
 });
+
+module.exports = app;

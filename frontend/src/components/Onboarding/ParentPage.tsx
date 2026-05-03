@@ -42,7 +42,9 @@ export default function ParentPage({ setView, userData }: ParentPageProps) {
         ...parentData,
       };
 
-      const response = await fetch("http://localhost:5000/api/parentpage", {
+      const API_URL = import.meta.env.VITE_API_URL || "";
+
+      const response = await fetch(`${API_URL}/api/parentpage`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

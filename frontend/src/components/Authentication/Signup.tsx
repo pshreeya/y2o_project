@@ -33,6 +33,8 @@ export default function Signup({
     password: "",
   });
 
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -45,7 +47,7 @@ export default function Signup({
   };
 
   //handler
-  const handleSignup = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSignup = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     setErrorMessage(""); //clear any previous error messages
@@ -59,7 +61,7 @@ export default function Signup({
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/signup", {
+      const response = await fetch(`${API_URL}/api/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -71,19 +73,26 @@ export default function Signup({
 
       if (!response.ok) {
         // Throw an error so the catch block can handle it
-        setErrorMessage(
-          "An unexpected error occured during signup. Try again.",
-        );
+        setErrorMessage(data.message || "Something went wrong during signup.");
+        return;
       }
+
+      if (!data.user) {
+        setErrorMessage("Unexpected response from server.");
+        return;
+      }
+
       //clearing up the form fields
       setSignupData({
         email: "",
         password: "",
       });
       //if successful: call the onLoginSuccess callback to switch to the onboarding flow
-      onLoginSuccess(true, data.user.id);
+      onLoginSuccess(true, data.user);
     } catch (error: any) {
-      setErrorMessage("User already exists. Try logging in.");
+      setErrorMessage(
+        error.message || "An unexpected error occurred during signup.",
+      );
     } finally {
       setIsLoading(false); //hide loading state
     }
@@ -143,7 +152,7 @@ export default function Signup({
           <span>or</span>
         </div>
 
-        <a href="http://localhost:5000/auth/google" className="btn-google">
+        <a href={`${API_URL}/api/auth/google`} className="btn-google">
           <svg viewBox="0 0 24 24" width="18" height="18">
             <path
               fill="#4285F4"

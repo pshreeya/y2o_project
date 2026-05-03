@@ -32,13 +32,15 @@ export default function Page1({ setView, userData, setUserData }: Page1Props) {
     }));
   };
 
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   //handler
   const handlePage1Submit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrorMessage("");
     setIsLoading(true);
     try {
-      const response = await fetch("http://localhost:5000/api/page1", {
+      const response = await fetch(`${API_URL}/api/page1`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

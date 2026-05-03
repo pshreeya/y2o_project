@@ -6,7 +6,7 @@ interface DashboardProps {
     id: string;
     first_name: string;
     last_name: string;
-    phone_number: string;
+    phone_number?: string;
     who_are_you: string;
   };
 }
@@ -15,9 +15,11 @@ export default function Dashboard({ userData }: DashboardProps) {
   // We only need the active tab state for the sidebar now!
   const [activeTab, setActiveTab] = useState<"home" | "profile">("home");
 
+  const API_URL = import.meta.env.VITE_API_URL || "";
+
   const handleLogout = async (): Promise<void> => {
     try {
-      const response = await fetch("http://localhost:5000/api/logout", {
+      const response = await fetch(`${API_URL}/api/logout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
