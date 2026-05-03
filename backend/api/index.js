@@ -1,13 +1,11 @@
 const express = require("express");
 const cors = require("cors");
-const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
 const stytch = require("stytch");
 const db = require("./db");
 
 const app = express();
-const saltRounds = 12;
 
 const stytchClient =
   process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET
@@ -94,51 +92,62 @@ app.post("/api/signup", async (req, res) => {
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
-  try {
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const checkUser = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+  if (!stytchClient) {
+    return res.status(503).json({ message: "Email signup is not configured." });
+  }
 
-    if (checkUser.rows.length > 0) {
+  try {
+    await stytchClient.passwords.create({ email, password });
+  } catch (err) {
+    if (err.error_type === "duplicate_email") {
       return res.status(400).json({ message: "User already exists" });
     }
+    console.error("Stytch signup error:", err);
+    return res.status(500).json({ message: "Signup failed. Please try again." });
+  }
 
+  try {
+    const existing = await db.query("SELECT * FROM users WHERE email = $1", [email]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: "User already exists" });
+    }
     const insertResult = await db.query(
-      "INSERT INTO users (email, password_hash, created_at) VALUES ($1, $2, $3) RETURNING *",
-      [email, hashedPassword, created_at],
+      "INSERT INTO users (email, created_at) VALUES ($1, $2) RETURNING *",
+      [email, created_at || new Date().toISOString()],
     );
-
-    res
-      .status(201)
-      .json({ message: "Signup successful", user: insertResult.rows[0] });
+    return res.status(201).json({ message: "Signup successful", user: insertResult.rows[0] });
   } catch (error) {
     console.error("Error during signup:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
 app.post("/api/login", async (req, res) => {
   const { email, password } = req.body;
+  if (!stytchClient) {
+    return res.status(503).json({ message: "Email login is not configured." });
+  }
+
   try {
-    const result = await db.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    await stytchClient.passwords.authenticate({ email, password, session_duration_minutes: 60 });
+  } catch (err) {
+    const status = err.status_code || 500;
+    if (status >= 400 && status < 500) {
+      return res.status(400).json({ message: "Invalid email or password" });
+    }
+    console.error("Stytch login error:", err);
+    return res.status(500).json({ message: "Login failed. Please try again." });
+  }
+
+  try {
+    const result = await db.query("SELECT * FROM users WHERE email = $1", [email]);
     if (result.rows.length === 0) {
-      return res.status(400).json({ message: "Invalid email or password" });
+      return res.status(404).json({ message: "User not found." });
     }
-
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-
-    if (!isMatch) {
-      return res.status(400).json({ message: "Invalid email or password" });
-    }
-
-    res.status(200).json({ message: "Login successful", user });
+    return res.status(200).json({ message: "Login successful", user: result.rows[0] });
   } catch (error) {
     console.error("Error during login:", error);
-    res.status(500).json({ message: "Internal server error" });
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
@@ -309,16 +318,24 @@ app.post("/api/verify-otp", async (req, res) => {
     return res.status(400).json({ error: "Method ID and code are required." });
   }
   try {
-    const response = await stytchClient.otps.sms.authenticate({
+    const stytchResponse = await stytchClient.otps.sms.authenticate({
       method_id,
       code,
       session_duration_minutes: 60,
     });
-    return res.json({
-      session_token: response.session_token,
-      session_jwt: response.session_jwt,
-      user_id: response.user_id,
-    });
+
+    const phone = stytchResponse.user.phone_numbers[0].phone_number;
+
+    const existing = await db.query("SELECT * FROM users WHERE phone_number = $1", [phone]);
+    if (existing.rows.length > 0) {
+      return res.json({ user: existing.rows[0], isNew: false });
+    }
+
+    const inserted = await db.query(
+      "INSERT INTO users (phone_number, created_at) VALUES ($1, $2) RETURNING *",
+      [phone, new Date().toISOString()],
+    );
+    return res.json({ user: inserted.rows[0], isNew: true });
   } catch (err) {
     console.error("Stytch verify OTP error:", err);
     const errType = err.error_type || "";

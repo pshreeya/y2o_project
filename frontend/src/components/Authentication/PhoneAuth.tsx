@@ -1,9 +1,10 @@
 import { useState } from "react";
 import "./Auth.css";
+import type { UserData } from "../Auth";
 
 interface PhoneAuthProps {
   setView: (view: "login" | "signup" | "forgot" | "phone") => void;
-  onLoginSuccess: (isNewUser: boolean, userId: string) => void;
+  onLoginSuccess: (isNewUser: boolean, user: UserData) => void;
 }
 
 export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
@@ -13,7 +14,6 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [code, setCode] = useState("");
   const [methodId, setMethodId] = useState("");
-  const [userCreated, setUserCreated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -30,7 +30,6 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       setMethodId(data.method_id);
-      setUserCreated(data.user_created);
       setStep("otp");
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to send code.");
@@ -51,7 +50,7 @@ export default function PhoneAuth({ setView, onLoginSuccess }: PhoneAuthProps) {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      onLoginSuccess(userCreated, data.user_id);
+      onLoginSuccess(data.isNew, data.user);
     } catch (err: any) {
       setErrorMessage(err.message || "Verification failed.");
     } finally {
