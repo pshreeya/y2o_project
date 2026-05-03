@@ -3,18 +3,19 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 const passport = require("passport");
 const GoogleStrategy = require("passport-google-oauth20").Strategy;
-<<<<<<< HEAD:backend/server.js
 const stytch = require("stytch");
-
-const stytchClient = (process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET)
-  ? new stytch.Client({ project_id: process.env.STYTCH_PROJECT_ID, secret: process.env.STYTCH_SECRET })
-  : null;
-=======
 const db = require("./db");
->>>>>>> 3dd00d828264f641b6a99ec1572f8e3379aa325a:backend/api/index.js
 
 const app = express();
 const saltRounds = 12;
+
+const stytchClient =
+  process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET
+    ? new stytch.Client({
+        project_id: process.env.STYTCH_PROJECT_ID,
+        secret: process.env.STYTCH_SECRET,
+      })
+    : null;
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 const GOOGLE_CALLBACK_URL =
@@ -159,9 +160,9 @@ app.post("/api/page1", async (req, res) => {
 
   try {
     const result = await db.query(
-      `UPDATE users 
-       SET first_name = $1, last_name = $2, phone_number = $3, role = $4 
-       WHERE id = $5 
+      `UPDATE users
+       SET first_name = $1, last_name = $2, phone_number = $3, role = $4
+       WHERE id = $5
        RETURNING *`,
       [first_name, last_name, phone_number, who_are_you, id],
     );
@@ -197,10 +198,10 @@ app.post("/api/studentpage", async (req, res) => {
 
   try {
     const result = await db.query(
-      `INSERT INTO student_profiles 
-        (user_id, age, grade, school, school_board, top_interests, primary_goal) 
-       VALUES 
-        ($1, $2, $3, $4, $5, $6, $7) 
+      `INSERT INTO student_profiles
+        (user_id, age, grade, school, school_board, top_interests, primary_goal)
+       VALUES
+        ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
       [user_id, age, grade, school, school_board, top_interests, primary_goal],
     );
@@ -224,10 +225,10 @@ app.post("/api/parentpage", async (req, res) => {
 
   try {
     const result = await db.query(
-      `INSERT INTO parent_profiles 
-        (user_id, teen_email, primary_focus) 
-       VALUES 
-        ($1, $2, $3) 
+      `INSERT INTO parent_profiles
+        (user_id, teen_email, primary_focus)
+       VALUES
+        ($1, $2, $3)
        RETURNING *`,
       [user_id, teen_email, primary_focus],
     );
@@ -252,10 +253,10 @@ app.post("/api/orgpage", async (req, res) => {
 
   try {
     const result = await db.query(
-      `INSERT INTO organization_profiles 
-        (user_id, org_name, org_type, org_size, org_role, primary_goal) 
-       VALUES 
-        ($1, $2, $3, $4, $5, $6) 
+      `INSERT INTO organization_profiles
+        (user_id, org_name, org_type, org_size, org_role, primary_goal)
+       VALUES
+        ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
       [user_id, org_name, org_type, org_size, org_role, primary_goal],
     );
@@ -270,11 +271,11 @@ app.post("/api/orgpage", async (req, res) => {
   }
 });
 
-<<<<<<< HEAD:backend/server.js
-// Send OTP to phone number
 app.post("/api/send-otp", async (req, res) => {
   if (!stytchClient) {
-    return res.status(503).json({ error: "Phone login is not configured on this server." });
+    return res
+      .status(503)
+      .json({ error: "Phone login is not configured on this server." });
   }
   let { phone_number } = req.body;
   if (!phone_number) {
@@ -285,17 +286,23 @@ app.post("/api/send-otp", async (req, res) => {
   }
   try {
     const response = await stytchClient.otps.sms.loginOrCreate({ phone_number });
-    return res.json({ method_id: response.phone_id, user_created: response.user_created });
+    return res.json({
+      method_id: response.phone_id,
+      user_created: response.user_created,
+    });
   } catch (err) {
     console.error("Stytch send OTP error:", err);
-    return res.status(500).json({ error: "Failed to send code. Check the phone number and try again." });
+    return res
+      .status(500)
+      .json({ error: "Failed to send code. Check the phone number and try again." });
   }
 });
 
-// Verify OTP code
 app.post("/api/verify-otp", async (req, res) => {
   if (!stytchClient) {
-    return res.status(503).json({ error: "Phone login is not configured on this server." });
+    return res
+      .status(503)
+      .json({ error: "Phone login is not configured on this server." });
   }
   const { method_id, code } = req.body;
   if (!method_id || !code) {
@@ -309,8 +316,8 @@ app.post("/api/verify-otp", async (req, res) => {
     });
     return res.json({
       session_token: response.session_token,
-      session_jwt:   response.session_jwt,
-      user_id:       response.user_id,
+      session_jwt: response.session_jwt,
+      user_id: response.user_id,
     });
   } catch (err) {
     console.error("Stytch verify OTP error:", err);
@@ -318,16 +325,14 @@ app.post("/api/verify-otp", async (req, res) => {
     if (errType === "otp_code_not_found" || errType === "unable_to_auth_otp") {
       return res.status(401).json({ error: "Invalid or expired code." });
     }
-    return res.status(500).json({ error: "Verification failed. Please try again." });
+    return res
+      .status(500)
+      .json({ error: "Verification failed. Please try again." });
   }
 });
 
-app.listen(5000, () => {
-  console.log("Express server running on port 5000");
-=======
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("Y2O API is running!");
->>>>>>> 3dd00d828264f641b6a99ec1572f8e3379aa325a:backend/api/index.js
 });
 
 module.exports = app;
